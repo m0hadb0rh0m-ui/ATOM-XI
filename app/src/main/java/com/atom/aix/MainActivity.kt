@@ -4,6 +4,11 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
@@ -78,42 +83,69 @@ class MainActivity:ComponentActivity(){
  var version by remember{mutableIntStateOf(0)}
  LaunchedEffect(sessionId){lines.clear();lines.addAll(db.load(sessionId))}
  val tabs=listOf("محادثة","3D","صور","فيديو","إعدادات")
- MaterialTheme(colorScheme=darkColorScheme()){
-  Scaffold(topBar={TopAppBar(title={Text("⚛️ ATOM AI X")})}){padding->
+ val listState=rememberLazyListState()
+ LaunchedEffect(lines.size){if(lines.isNotEmpty()) listState.animateScrollToItem(lines.lastIndex)}
+ MaterialTheme(colorScheme=lightColorScheme(primary=Color(0xFF151515),background=Color.White,surface=Color.White)){
+  Scaffold(topBar={TopAppBar(title={Text("ATOM AI X",fontWeight=FontWeight.SemiBold)},navigationIcon={TextButton(onClick={tab=if(tab==0) 4 else 0}){Text("☰",style=MaterialTheme.typography.headlineSmall)}},actions={TextButton(onClick={sessionId=db.createSession();version++;tab=0}){Text("✎",style=MaterialTheme.typography.headlineSmall)}})}){padding->
    Column(Modifier.fillMaxSize().padding(padding).padding(horizontal=12.dp)){
-    ScrollableTabRow(selectedTabIndex=tab){tabs.forEachIndexed{i,title->Tab(selected=tab==i,onClick={tab=i},text={Text(title)})}}
+    if(tab!=0) ScrollableTabRow(selectedTabIndex=tab){tabs.forEachIndexed{i,title->Tab(selected=tab==i,onClick={tab=i},text={Text(title)})}}
     when(tab){
      0->{
-      Row(verticalAlignment=Alignment.CenterVertically){
-       Button(onClick={sessionId=db.createSession();version++}){Text("+ جلسة")}
-       Spacer(Modifier.width(8.dp))
-       var expanded by remember{mutableStateOf(false)}
-       Box{
-        OutlinedButton(onClick={expanded=true}){Text("السجل")}
+      var expanded by remember { mutableStateOf(false) }
+      Row(verticalAlignment=Alignment.CenterVertically,modifier=Modifier.fillMaxWidth()){
+       Box {
+        TextButton(onClick={expanded=true}){Text("☰  المحادثات",color=Color.DarkGray)}
         DropdownMenu(expanded=expanded,onDismissRequest={expanded=false}){
          val history=remember(version){db.sessions()}
          history.forEach{(id,title)->DropdownMenuItem(text={Text(title+" #"+id)},onClick={sessionId=id;expanded=false})}
+         DropdownMenuItem(text={Text("⚙️ الإعدادات")},onClick={tab=4;expanded=false})
+         DropdownMenuItem(text={Text("🎨 الصور والفيديو و3D")},onClick={tab=2;expanded=false})
+        }
+       }
+       Spacer(Modifier.weight(1f))
+       Text(engine+" ▾",color=Color.Gray,modifier=Modifier.padding(end=12.dp))
+      }
+      if(lines.isEmpty()) Box(Modifier.weight(1f).fillMaxWidth(),contentAlignment=Alignment.Center){
+       Column(horizontalAlignment=Alignment.CenterHorizontally){
+        Text("⚛",style=MaterialTheme.typography.displayLarge)
+        Spacer(Modifier.height(12.dp))
+        Text("كيف يمكنني مساعدتك؟",style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.SemiBold)
+       }
+      } else LazyColumn(state=listState,modifier=Modifier.weight(1f).fillMaxWidth(),contentPadding=PaddingValues(vertical=16.dp)){
+       items(lines){line->
+        if(line.role=="user"){
+         Row(Modifier.fillMaxWidth().padding(vertical=8.dp),horizontalArrangement=Arrangement.End){
+          Text(line.text,modifier=Modifier.widthIn(max=310.dp).background(Color(0xFFF1F1F1),RoundedCornerShape(22.dp)).padding(14.dp),color=Color(0xFF202020))
+         }
+        } else {
+         Column(Modifier.fillMaxWidth().padding(vertical=12.dp)){
+          Text("⚛ ATOM",fontWeight=FontWeight.Bold,color=Color(0xFF202020))
+          Spacer(Modifier.height(8.dp))
+          Text(line.text,color=Color(0xFF202020))
+         }
         }
        }
       }
-      LazyColumn(Modifier.weight(1f).fillMaxWidth()){
-       items(lines){line->Card(Modifier.fillMaxWidth().padding(vertical=4.dp)){
-        Column(Modifier.padding(12.dp)){Text(if(line.role=="user") "أنت" else "ATOM AI X",style=MaterialTheme.typography.labelMedium);Text(line.text)}
-       }}
-      }
+      if(busy) LinearProgressIndicator(modifier=Modifier.fillMaxWidth())
       if(error.isNotBlank()) Text(error,color=MaterialTheme.colorScheme.error)
-      OutlinedTextField(value=input,onValueChange={input=it},modifier=Modifier.fillMaxWidth(),label={Text("اكتب رسالتك")})
-      Button(enabled=!busy&&input.isNotBlank()&&(engine=="Ollama"||apiKey.isNotBlank()),modifier=Modifier.fillMaxWidth(),onClick={
-       val message=input.trim();input="";error=""
-       val userLine=ChatLine("user",message);lines.add(userLine);db.add(sessionId,userLine);busy=true
-       val snapshot=lines.toList()
-       scope.launch{
-        try{val answer=withContext(Dispatchers.IO){if(engine=="Ollama") askOllama(ollamaUrl,ollamaModel,temperature,snapshot) else ask(apiKey,model,snapshot)};val line=ChatLine("model",answer);lines.add(line);db.add(sessionId,line)}
-        catch(e:Exception){error=e.message?:"تعذر الاتصال"}
-        finally{busy=false}
-       }
-      }){Text(if(busy) "جارٍ الإرسال..." else "إرسال")}
-      if(engine=="Gemini"&&apiKey.isBlank()) Text("أضف مفتاح Gemini API من الإعدادات")
+      if(engine=="Gemini"&&apiKey.isBlank()) TextButton(onClick={tab=4}){Text("أضف مفتاح Gemini API من الإعدادات")}
+      Row(Modifier.fillMaxWidth().padding(bottom=8.dp,top=6.dp),verticalAlignment=Alignment.Bottom){
+       TextButton(onClick={tab=2},modifier=Modifier.padding(end=2.dp)){Text("+",style=MaterialTheme.typography.headlineMedium)}
+       OutlinedTextField(value=input,onValueChange={input=it},modifier=Modifier.weight(1f),placeholder={Text("اسأل ATOM AI X")},shape=RoundedCornerShape(28.dp),maxLines=5)
+       Spacer(Modifier.width(6.dp))
+       FilledIconButton(enabled=!busy&&input.isNotBlank()&&(engine=="Ollama"||apiKey.isNotBlank()),onClick={
+        val message=input.trim();input="";error=""
+        val userLine=ChatLine("user",message);lines.add(userLine);db.add(sessionId,userLine);busy=true
+        val snapshot=lines.toList()
+        scope.launch{
+         try{
+          val answer=withContext(Dispatchers.IO){if(engine=="Ollama") askOllama(ollamaUrl,ollamaModel,temperature,snapshot) else ask(apiKey,model,snapshot)}
+          val line=ChatLine("model",answer);lines.add(line);db.add(sessionId,line)
+         }catch(e:Exception){error=e.message?:"تعذر الاتصال"}
+         finally{busy=false}
+        }
+       }){Text("↑",style=MaterialTheme.typography.titleLarge)}
+      }
      }
      4->{
       Spacer(Modifier.height(16.dp))
