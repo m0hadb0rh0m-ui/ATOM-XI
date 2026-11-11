@@ -1,0 +1,38 @@
+name: Deploy ATOM AI X to Hugging Face
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'atom-cloud/**'
+      - '.github/workflows/deploy-atom-cloud.yml'
+  workflow_dispatch:
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify Hugging Face token
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          if [ -z "$HF_TOKEN" ]; then
+            echo "::error::Set HF_TOKEN in GitHub repository Actions secrets before deploying."
+            exit 1
+          fi
+      - name: Install Hugging Face Hub
+        run: python -m pip install 'huggingface_hub>=0.28,<2'
+      - name: Upload cloud service to Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          python - <<'PY'
+          import os
+          from huggingface_hub import HfApi
+          HfApi(token=os.environ["HF_TOKEN"]).upload_folder(
+              repo_id="mooner2008/atom-ai",
+              repo_type="space",
+              folder_path="atom-cloud",
+              commit_message="Deploy ATOM AI X inference API from GitHub",
+          )
+          print("Uploaded cloud files to Hugging Face Space.")
+          PY
