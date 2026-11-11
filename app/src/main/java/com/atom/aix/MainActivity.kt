@@ -37,6 +37,23 @@ private fun ask(key:String,model:String,lines:List<ChatLine>):String {
   return buildString{if(parts!=null) for(i in 0 until parts.length()) append(parts.optJSONObject(i)?.optString("text").orEmpty())}.ifBlank{"لم يرجع النموذج إجابة نصية."}
  }
 }
+
+private fun askOllama(url:String, model:String, temperature:Float, lines:List<ChatLine>):String {
+ val messages=JSONArray().put(JSONObject().put("role","system").put("content","أنت ATOM QUANTUM V6. أجب بدقة وبلغة المستخدم."))
+ lines.takeLast(12).forEach { line ->
+  messages.put(JSONObject().put("role",if(line.role=="user") "user" else "assistant").put("content",line.text))
+ }
+ val payload=JSONObject().put("model",model).put("messages",messages).put("stream",false)
+  .put("options",JSONObject().put("temperature",temperature.toDouble()))
+ val request=Request.Builder().url(url.trimEnd('/')+"/api/chat")
+  .post(payload.toString().toRequestBody("application/json; charset=utf-8".toMediaType())).build()
+ client.newBuilder().callTimeout(300,TimeUnit.SECONDS).build().newCall(request).execute().use { response ->
+  val raw=response.body?.string().orEmpty()
+  if(!response.isSuccessful) throw IllegalStateException("Ollama HTTP "+response.code+": "+raw.take(200))
+  return JSONObject(raw).getJSONObject("message").getString("content").trim()
+ }
+}
+
 class MainActivity:ComponentActivity(){
  override fun onCreate(savedInstanceState:Bundle?){super.onCreate(savedInstanceState);setContent{AtomScreen()}}
 }
@@ -46,6 +63,10 @@ class MainActivity:ComponentActivity(){
  val prefs=remember{context.getSharedPreferences("atom_settings",Activity.MODE_PRIVATE)}
  var apiKey by remember{mutableStateOf(prefs.getString("gemini_key","").orEmpty())}
  var model by remember{mutableStateOf(prefs.getString("model","gemini-2.5-flash").orEmpty())}
+ var engine by remember{mutableStateOf(prefs.getString("engine","Gemini").orEmpty())}
+ var ollamaUrl by remember{mutableStateOf(prefs.getString("ollama_url","http://192.168.1.2:11434").orEmpty())}
+ var ollamaModel by remember{mutableStateOf(prefs.getString("ollama_model","atom").orEmpty())}
+ var temperature by remember{mutableFloatStateOf(prefs.getFloat("temperature",0.2f))}
  var tab by remember{mutableIntStateOf(0)}
  var input by remember{mutableStateOf("")}
  var busy by remember{mutableStateOf(false)}
@@ -82,20 +103,35 @@ class MainActivity:ComponentActivity(){
       }
       if(error.isNotBlank()) Text(error,color=MaterialTheme.colorScheme.error)
       OutlinedTextField(value=input,onValueChange={input=it},modifier=Modifier.fillMaxWidth(),label={Text("اكتب رسالتك")})
-      Button(enabled=!busy&&input.isNotBlank()&&apiKey.isNotBlank(),modifier=Modifier.fillMaxWidth(),onClick={
+      Button(enabled=!busy&&input.isNotBlank()&&(engine=="Ollama"||apiKey.isNotBlank()),modifier=Modifier.fillMaxWidth(),onClick={
        val message=input.trim();input="";error=""
        val userLine=ChatLine("user",message);lines.add(userLine);db.add(sessionId,userLine);busy=true
        val snapshot=lines.toList()
        scope.launch{
-        try{val answer=withContext(Dispatchers.IO){ask(apiKey,model,snapshot)};val line=ChatLine("model",answer);lines.add(line);db.add(sessionId,line)}
+        try{val answer=withContext(Dispatchers.IO){if(engine=="Ollama") askOllama(ollamaUrl,ollamaModel,temperature,snapshot) else ask(apiKey,model,snapshot)};val line=ChatLine("model",answer);lines.add(line);db.add(sessionId,line)}
         catch(e:Exception){error=e.message?:"تعذر الاتصال"}
         finally{busy=false}
        }
       }){Text(if(busy) "جارٍ الإرسال..." else "إرسال")}
-      if(apiKey.isBlank()) Text("أضف مفتاح Gemini API من الإعدادات")
+      if(engine=="Gemini"&&apiKey.isBlank()) Text("أضف مفتاح Gemini API من الإعدادات")
      }
      4->{
       Spacer(Modifier.height(16.dp))
+      Text("محرك الذكاء الاصطناعي")
+      Row(verticalAlignment=Alignment.CenterVertically) {
+       listOf("Gemini","Ollama").forEach { candidate ->
+        RadioButton(selected=engine==candidate,onClick={engine=candidate;prefs.edit().putString("engine",candidate).apply()})
+        Text(candidate)
+       }
+      }
+      if(engine=="Ollama") {
+       OutlinedTextField(value=ollamaUrl,onValueChange={ollamaUrl=it;prefs.edit().putString("ollama_url",it).apply()},modifier=Modifier.fillMaxWidth(),label={Text("Ollama server URL (IP:11434)")})
+       OutlinedTextField(value=ollamaModel,onValueChange={ollamaModel=it;prefs.edit().putString("ollama_model",it).apply()},modifier=Modifier.fillMaxWidth(),label={Text("Ollama model (atom / qwen2.5-coder:7b)")})
+       Text("Temperature: "+temperature)
+       Slider(value=temperature,onValueChange={temperature=it;prefs.edit().putFloat("temperature",it).apply()},valueRange=0f..1.5f)
+       Text("Ollama يحتاج خادمًا يعمل على جهاز آخر، ولا يعمل localhost الخاص بالكمبيوتر مباشرة من الهاتف.")
+      }
+
       OutlinedTextField(value=apiKey,onValueChange={apiKey=it;prefs.edit().putString("gemini_key",it).apply()},modifier=Modifier.fillMaxWidth(),label={Text("Gemini API Key")},visualTransformation=PasswordVisualTransformation())
       listOf("gemini-2.5-flash","gemini-2.5-pro").forEach{candidate->
        Row(verticalAlignment=Alignment.CenterVertically){RadioButton(selected=model==candidate,onClick={model=candidate;prefs.edit().putString("model",candidate).apply()});Text(candidate)}
