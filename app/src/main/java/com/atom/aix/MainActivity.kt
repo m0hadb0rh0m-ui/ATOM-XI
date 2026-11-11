@@ -11,6 +11,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.ui.graphics.Color
@@ -84,6 +85,13 @@ class MainActivity:ComponentActivity(){
  var ollamaUrl by remember{mutableStateOf(prefs.getString("ollama_url","http://192.168.1.2:11434").orEmpty())}
  var ollamaModel by remember{mutableStateOf(prefs.getString("ollama_model","atom").orEmpty())}
  var temperature by remember{mutableFloatStateOf(prefs.getFloat("temperature",0.2f))}
+ var uiLanguage by remember{mutableStateOf(prefs.getString("ui_language","ar").orEmpty())}
+ var darkMode by remember{mutableStateOf(prefs.getBoolean("dark_mode",false))}
+ var speechEnabled by remember{mutableStateOf(prefs.getBoolean("speech_enabled",true))}
+ var speechRate by remember{mutableFloatStateOf(prefs.getFloat("speech_rate",1f))}
+ var voiceLanguage by remember{mutableStateOf(prefs.getString("voice_language","ar").orEmpty())}
+ var keepHistory by remember{mutableStateOf(prefs.getBoolean("keep_history",true))}
+ var confirmClear by remember{mutableStateOf(false)}
  var tab by remember{mutableIntStateOf(0)}
  var input by remember{mutableStateOf("")}
  var busy by remember{mutableStateOf(false)}
@@ -97,7 +105,7 @@ class MainActivity:ComponentActivity(){
  val tabs=listOf("محادثة","3D","صور","فيديو","إعدادات")
  val listState=rememberLazyListState()
  LaunchedEffect(lines.size){if(lines.isNotEmpty()) listState.animateScrollToItem(lines.lastIndex)}
- MaterialTheme(colorScheme=lightColorScheme(primary=Color(0xFF151515),background=Color.White,surface=Color.White)){
+ MaterialTheme(colorScheme=if(darkMode) darkColorScheme() else lightColorScheme(primary=Color(0xFF151515),background=Color.White,surface=Color.White)){
   Scaffold(topBar={TopAppBar(title={Text("ATOM AI X",fontWeight=FontWeight.SemiBold)},navigationIcon={TextButton(onClick={tab=if(tab==0) 4 else 0}){Text("☰",style=MaterialTheme.typography.headlineSmall)}},actions={TextButton(onClick={sessionId=db.createSession();version++;tab=0}){Text("✎",style=MaterialTheme.typography.headlineSmall)}})}){padding->
    Column(Modifier.fillMaxSize().padding(padding).padding(horizontal=12.dp)){
     if(tab!=0) ScrollableTabRow(selectedTabIndex=tab){tabs.forEachIndexed{i,title->Tab(selected=tab==i,onClick={tab=i},text={Text(title)})}}
@@ -121,7 +129,7 @@ class MainActivity:ComponentActivity(){
        Column(horizontalAlignment=Alignment.CenterHorizontally){
         Text("⚛",style=MaterialTheme.typography.displayLarge)
         Spacer(Modifier.height(12.dp))
-        Text("كيف يمكنني مساعدتك؟",style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.SemiBold)
+        Text(if(uiLanguage=="ar") "كيف يمكنني مساعدتك؟" else "How can I help?",style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.SemiBold)
        }
       } else LazyColumn(state=listState,modifier=Modifier.weight(1f).fillMaxWidth(),contentPadding=PaddingValues(vertical=16.dp)){
        items(lines){line->
@@ -134,7 +142,7 @@ class MainActivity:ComponentActivity(){
           Text("⚛ ATOM",fontWeight=FontWeight.Bold,color=Color(0xFF202020))
           Spacer(Modifier.height(8.dp))
           Text(line.text,color=Color(0xFF202020))
-          TextButton(onClick={tts.language=Locale.forLanguageTag("ar");tts.speak(line.text,TextToSpeech.QUEUE_FLUSH,null,"atom_reply")}){Text("🔊 استمع للرد")}
+          if(speechEnabled) TextButton(onClick={tts.language=Locale.forLanguageTag(voiceLanguage);tts.setSpeechRate(speechRate);tts.speak(line.text,TextToSpeech.QUEUE_FLUSH,null,"atom_reply")}){Text(if(uiLanguage=="ar") "🔊 استمع للرد" else "🔊 Listen")}
          }
         }
        }
@@ -144,11 +152,11 @@ class MainActivity:ComponentActivity(){
       if(engine=="Gemini"&&apiKey.isBlank()) TextButton(onClick={tab=4}){Text("أضف مفتاح Gemini API من الإعدادات")}
       Row(Modifier.fillMaxWidth().padding(bottom=8.dp,top=6.dp),verticalAlignment=Alignment.Bottom){
        TextButton(onClick={tab=2},modifier=Modifier.padding(end=2.dp)){Text("+",style=MaterialTheme.typography.headlineMedium)}
-       OutlinedTextField(value=input,onValueChange={input=it},modifier=Modifier.weight(1f),placeholder={Text("اسأل ATOM AI X")},shape=RoundedCornerShape(28.dp),maxLines=5)
+       OutlinedTextField(value=input,onValueChange={input=it},modifier=Modifier.weight(1f),placeholder={Text(if(uiLanguage=="ar") "اسأل ATOM AI X" else "Ask ATOM AI X")},shape=RoundedCornerShape(28.dp),maxLines=5)
        TextButton(onClick={
         val intent=Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply{
          putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-         putExtra(RecognizerIntent.EXTRA_LANGUAGE,"ar")
+         putExtra(RecognizerIntent.EXTRA_LANGUAGE,voiceLanguage)
          putExtra(RecognizerIntent.EXTRA_PROMPT,"تحدث إلى ATOM AI X")
         }
         try{voiceLauncher.launch(intent)}catch(e:Exception){error="التعرف الصوتي غير متاح على هذا الجهاز"}
@@ -156,12 +164,12 @@ class MainActivity:ComponentActivity(){
        Spacer(Modifier.width(6.dp))
        FilledIconButton(enabled=!busy&&input.isNotBlank()&&(engine=="Ollama"||apiKey.isNotBlank()),onClick={
         val message=input.trim();input="";error=""
-        val userLine=ChatLine("user",message);lines.add(userLine);db.add(sessionId,userLine);busy=true
+        val userLine=ChatLine("user",message);lines.add(userLine);if(keepHistory) db.add(sessionId,userLine);busy=true
         val snapshot=lines.toList()
         scope.launch{
          try{
           val answer=withContext(Dispatchers.IO){if(engine=="Ollama") askOllama(ollamaUrl,ollamaModel,temperature,snapshot) else ask(apiKey,model,snapshot)}
-          val line=ChatLine("model",answer);lines.add(line);db.add(sessionId,line)
+          val line=ChatLine("model",answer);lines.add(line);if(keepHistory) db.add(sessionId,line)
          }catch(e:Exception){error=e.message?:"تعذر الاتصال"}
          finally{busy=false}
         }
@@ -169,27 +177,76 @@ class MainActivity:ComponentActivity(){
       }
      }
      4->{
-      Spacer(Modifier.height(16.dp))
-      Text("محرك الذكاء الاصطناعي")
-      Row(verticalAlignment=Alignment.CenterVertically) {
-       listOf("Gemini","Ollama").forEach { candidate ->
-        RadioButton(selected=engine==candidate,onClick={engine=candidate;prefs.edit().putString("engine",candidate).apply()})
-        Text(candidate)
+      val ar=uiLanguage=="ar"
+      Column(Modifier.fillMaxSize().verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(vertical=12.dp)){
+       Text(if(ar) "الإعدادات العامة" else "General settings",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)
+       Spacer(Modifier.height(14.dp))
+       Text(if(ar) "اللغة" else "Language",fontWeight=FontWeight.Bold)
+       Row(verticalAlignment=Alignment.CenterVertically){
+        listOf("ar" to "العربية","en" to "English").forEach{(code,label)->
+         RadioButton(selected=uiLanguage==code,onClick={uiLanguage=code;prefs.edit().putString("ui_language",code).apply()})
+         Text(label)
+        }
        }
+       Row(verticalAlignment=Alignment.CenterVertically,modifier=Modifier.fillMaxWidth()){
+        Text(if(ar) "الوضع الليلي" else "Dark mode",modifier=Modifier.weight(1f))
+        Switch(checked=darkMode,onCheckedChange={darkMode=it;prefs.edit().putBoolean("dark_mode",it).apply()})
+       }
+       HorizontalDivider()
+       Spacer(Modifier.height(12.dp))
+       Text(if(ar) "محرك الذكاء الاصطناعي" else "AI engine",fontWeight=FontWeight.Bold)
+       Row(verticalAlignment=Alignment.CenterVertically){
+        listOf("Gemini","Ollama").forEach{candidate->
+         RadioButton(selected=engine==candidate,onClick={engine=candidate;prefs.edit().putString("engine",candidate).apply()})
+         Text(candidate)
+        }
+       }
+       if(engine=="Ollama"){
+        OutlinedTextField(value=ollamaUrl,onValueChange={ollamaUrl=it;prefs.edit().putString("ollama_url",it).apply()},modifier=Modifier.fillMaxWidth(),label={Text("Ollama server URL")})
+        OutlinedTextField(value=ollamaModel,onValueChange={ollamaModel=it;prefs.edit().putString("ollama_model",it).apply()},modifier=Modifier.fillMaxWidth(),label={Text("Ollama model")})
+        Text("Temperature: "+temperature)
+        Slider(value=temperature,onValueChange={temperature=it;prefs.edit().putFloat("temperature",it).apply()},valueRange=0f..1.5f)
+       }else{
+        OutlinedTextField(value=apiKey,onValueChange={apiKey=it;prefs.edit().putString("gemini_key",it).apply()},modifier=Modifier.fillMaxWidth(),label={Text("Gemini API Key")},visualTransformation=PasswordVisualTransformation())
+        listOf("gemini-2.5-flash","gemini-2.5-pro").forEach{candidate->
+         Row(verticalAlignment=Alignment.CenterVertically){
+          RadioButton(selected=model==candidate,onClick={model=candidate;prefs.edit().putString("model",candidate).apply()})
+          Text(candidate)
+         }
+        }
+       }
+       HorizontalDivider()
+       Spacer(Modifier.height(12.dp))
+       Text(if(ar) "الصوت" else "Voice",fontWeight=FontWeight.Bold)
+       Row(verticalAlignment=Alignment.CenterVertically,modifier=Modifier.fillMaxWidth()){
+        Text(if(ar) "إظهار زر قراءة الرد" else "Show spoken replies",modifier=Modifier.weight(1f))
+        Switch(checked=speechEnabled,onCheckedChange={speechEnabled=it;prefs.edit().putBoolean("speech_enabled",it).apply()})
+       }
+       Text(if(ar) "سرعة النطق" else "Speech speed")
+       Slider(value=speechRate,onValueChange={speechRate=it;prefs.edit().putFloat("speech_rate",it).apply()},valueRange=0.5f..1.5f)
+       Row(verticalAlignment=Alignment.CenterVertically){
+        listOf("ar" to "عربي","en" to "English").forEach{(code,label)->
+         RadioButton(selected=voiceLanguage==code,onClick={voiceLanguage=code;prefs.edit().putString("voice_language",code).apply()})
+         Text(label)
+        }
+       }
+       Text(if(ar) "التعرف الصوتي يعمل عند الضغط على الميكروفون فقط." else "Speech recognition starts only when you tap the microphone.",style=MaterialTheme.typography.bodySmall)
+       HorizontalDivider()
+       Spacer(Modifier.height(12.dp))
+       Text(if(ar) "الخصوصية والذاكرة" else "Privacy and memory",fontWeight=FontWeight.Bold)
+       Row(verticalAlignment=Alignment.CenterVertically,modifier=Modifier.fillMaxWidth()){
+        Text(if(ar) "حفظ سجل المحادثات محليًا" else "Save local chat history",modifier=Modifier.weight(1f))
+        Switch(checked=keepHistory,onCheckedChange={keepHistory=it;prefs.edit().putBoolean("keep_history",it).apply()})
+       }
+       Text(if(ar) "عند إيقاف الحفظ تبقى الرسائل الحالية على الشاشة فقط، ولا تُحذف المحادثات السابقة." else "Disabling history stops saving new messages; old chats remain until deleted.",style=MaterialTheme.typography.bodySmall)
+       Spacer(Modifier.height(8.dp))
+       OutlinedButton(onClick={confirmClear=true}){Text(if(ar) "حذف جميع المحادثات المحفوظة" else "Delete all saved conversations")}
+       if(confirmClear) AlertDialog(onDismissRequest={confirmClear=false},title={Text(if(ar) "تأكيد الحذف" else "Confirm deletion")},text={Text(if(ar) "سيتم حذف كل المحادثات من هذا الجهاز نهائيًا." else "All local conversations will be permanently deleted.")},confirmButton={
+        TextButton(onClick={db.clearAll();sessionId=db.createSession();lines.clear();version++;confirmClear=false}){Text(if(ar) "حذف" else "Delete")}
+       },dismissButton={TextButton(onClick={confirmClear=false}){Text(if(ar) "إلغاء" else "Cancel")}})
+       Text(if(ar) "يتم إرسال الرسائل إلى مزود الذكاء المختار. مفتاح Gemini محفوظ في تفضيلات التطبيق، وليس مشفرًا تشفيرًا مخصصًا." else "Messages go to the selected AI provider. The Gemini key is stored in app preferences without dedicated encryption.",style=MaterialTheme.typography.bodySmall)
+       Spacer(Modifier.height(24.dp))
       }
-      if(engine=="Ollama") {
-       OutlinedTextField(value=ollamaUrl,onValueChange={ollamaUrl=it;prefs.edit().putString("ollama_url",it).apply()},modifier=Modifier.fillMaxWidth(),label={Text("Ollama server URL (IP:11434)")})
-       OutlinedTextField(value=ollamaModel,onValueChange={ollamaModel=it;prefs.edit().putString("ollama_model",it).apply()},modifier=Modifier.fillMaxWidth(),label={Text("Ollama model (atom / qwen2.5-coder:7b)")})
-       Text("Temperature: "+temperature)
-       Slider(value=temperature,onValueChange={temperature=it;prefs.edit().putFloat("temperature",it).apply()},valueRange=0f..1.5f)
-       Text("Ollama يحتاج خادمًا يعمل على جهاز آخر، ولا يعمل localhost الخاص بالكمبيوتر مباشرة من الهاتف.")
-      }
-
-      OutlinedTextField(value=apiKey,onValueChange={apiKey=it;prefs.edit().putString("gemini_key",it).apply()},modifier=Modifier.fillMaxWidth(),label={Text("Gemini API Key")},visualTransformation=PasswordVisualTransformation())
-      listOf("gemini-2.5-flash","gemini-2.5-pro").forEach{candidate->
-       Row(verticalAlignment=Alignment.CenterVertically){RadioButton(selected=model==candidate,onClick={model=candidate;prefs.edit().putString("model",candidate).apply()});Text(candidate)}
-      }
-      Text("المفتاح محفوظ في تفضيلات التطبيق المحلية؛ يفضل استخدام خادم وسيط في الإنتاج.")
      }
      else->{Spacer(Modifier.height(24.dp));Text("هذا القسم قيد التطوير، ولا يدعم التوليد حاليًا.")}
     }
