@@ -15,5 +15,7 @@ internal class AtomDatabase(context: Context): SQLiteOpenHelper(context,"atom.db
  fun latestSessionId():Long? = readableDatabase.rawQuery("SELECT id FROM sessions ORDER BY id DESC LIMIT 1",null).use{if(it.moveToFirst()) it.getLong(0) else null}
  fun sessions():List<Pair<Long,String>> = readableDatabase.rawQuery("SELECT id,title FROM sessions ORDER BY id DESC",null).use{c->buildList{while(c.moveToNext()) add(c.getLong(0) to c.getString(1))}}
  fun load(id:Long):List<ChatLine> = readableDatabase.rawQuery("SELECT role,text FROM messages WHERE session_id=? ORDER BY id",arrayOf(id.toString())).use{c->buildList{while(c.moveToNext()) add(ChatLine(c.getString(0),c.getString(1)))}}
+ fun clearAll(){writableDatabase.execSQL("DELETE FROM messages");writableDatabase.execSQL("DELETE FROM sessions")}
+ fun deleteSession(id:Long){writableDatabase.delete("messages","session_id=?",arrayOf(id.toString()));writableDatabase.delete("sessions","id=?",arrayOf(id.toString()))}
  fun add(id:Long,line:ChatLine){writableDatabase.insertOrThrow("messages",null,ContentValues().apply{put("session_id",id);put("role",line.role);put("text",line.text)})}
 }
