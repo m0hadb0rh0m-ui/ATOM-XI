@@ -1,6 +1,12 @@
 package com.atom.aix
 import android.app.Activity
 import android.os.Bundle
+import android.content.Intent
+import android.speech.RecognizerIntent
+import android.speech.tts.TextToSpeech
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import java.util.Locale
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
@@ -65,6 +71,12 @@ class MainActivity:ComponentActivity(){
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable private fun AtomScreen(){
  val context=LocalContext.current
+ val tts=remember { TextToSpeech(context,null) }
+ DisposableEffect(tts){onDispose{tts.stop();tts.shutdown()}}
+ val voiceLauncher=rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()){result->
+  val recognized=result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
+  if(!recognized.isNullOrBlank()) input=recognized
+ }
  val prefs=remember{context.getSharedPreferences("atom_settings",Activity.MODE_PRIVATE)}
  var apiKey by remember{mutableStateOf(prefs.getString("gemini_key","").orEmpty())}
  var model by remember{mutableStateOf(prefs.getString("model","gemini-2.5-flash").orEmpty())}
@@ -122,6 +134,7 @@ class MainActivity:ComponentActivity(){
           Text("⚛ ATOM",fontWeight=FontWeight.Bold,color=Color(0xFF202020))
           Spacer(Modifier.height(8.dp))
           Text(line.text,color=Color(0xFF202020))
+          TextButton(onClick={tts.language=Locale.forLanguageTag("ar");tts.speak(line.text,TextToSpeech.QUEUE_FLUSH,null,"atom_reply")}){Text("🔊 استمع للرد")}
          }
         }
        }
@@ -132,6 +145,14 @@ class MainActivity:ComponentActivity(){
       Row(Modifier.fillMaxWidth().padding(bottom=8.dp,top=6.dp),verticalAlignment=Alignment.Bottom){
        TextButton(onClick={tab=2},modifier=Modifier.padding(end=2.dp)){Text("+",style=MaterialTheme.typography.headlineMedium)}
        OutlinedTextField(value=input,onValueChange={input=it},modifier=Modifier.weight(1f),placeholder={Text("اسأل ATOM AI X")},shape=RoundedCornerShape(28.dp),maxLines=5)
+       TextButton(onClick={
+        val intent=Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply{
+         putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+         putExtra(RecognizerIntent.EXTRA_LANGUAGE,"ar")
+         putExtra(RecognizerIntent.EXTRA_PROMPT,"تحدث إلى ATOM AI X")
+        }
+        try{voiceLauncher.launch(intent)}catch(e:Exception){error="التعرف الصوتي غير متاح على هذا الجهاز"}
+       }){Text("🎙️")}
        Spacer(Modifier.width(6.dp))
        FilledIconButton(enabled=!busy&&input.isNotBlank()&&(engine=="Ollama"||apiKey.isNotBlank()),onClick={
         val message=input.trim();input="";error=""
