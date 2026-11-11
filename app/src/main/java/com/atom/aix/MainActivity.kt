@@ -25,6 +25,22 @@ import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
 private val client=OkHttpClient.Builder().callTimeout(90,TimeUnit.SECONDS).build()
+private fun askOllama(baseUrl:String, model:String, lines:List<ChatLine>):String {
+ val base=baseUrl.trim().trimEnd('/')
+ require(base.startsWith("https://") || base.startsWith("http://")) { "أدخل عنوان خادم Ollama صحيحًا" }
+ val messages=JSONArray()
+ messages.put(JSONObject().put("role","system").put("content","أنت ATOM QUANTUM V6. أجب بدقة وبالعربية عند الطلب."))
+ lines.takeLast(16).forEach { line ->
+  messages.put(JSONObject().put("role",if(line.role=="user") "user" else "assistant").put("content",line.text))
+ }
+ val payload=JSONObject().put("model",model).put("messages",messages).put("stream",false)
+ val req=Request.Builder().url("$base/api/chat").post(payload.toString().toRequestBody("application/json; charset=utf-8".toMediaType())).build()
+ client.newCall(req).execute().use { response ->
+  val raw=response.body?.string().orEmpty()
+  if(!response.isSuccessful) throw IllegalStateException("Ollama HTTP ${response.code}: ${raw.take(250)}")
+  return JSONObject(raw).optJSONObject("message")?.optString("content").orEmpty().ifBlank{"لم يرجع النموذج إجابة."}
+ }
+}
 private fun ask(key:String,model:String,lines:List<ChatLine>):String {
  val contents=JSONArray()
  lines.takeLast(16).forEach{line->contents.put(JSONObject().put("role",if(line.role=="user") "user" else "model").put("parts",JSONArray().put(JSONObject().put("text",line.text))))}
@@ -46,6 +62,9 @@ class MainActivity:ComponentActivity(){
  val prefs=remember{context.getSharedPreferences("atom_settings",Activity.MODE_PRIVATE)}
  var apiKey by remember{mutableStateOf(prefs.getString("gemini_key","").orEmpty())}
  var model by remember{mutableStateOf(prefs.getString("model","gemini-2.5-flash").orEmpty())}
+ var provider by remember{mutableStateOf(prefs.getString("provider","Ollama").orEmpty())}
+ var ollamaUrl by remember{mutableStateOf(prefs.getString("ollama_url","http://10.0.2.2:11434").orEmpty())}
+ var ollamaModel by remember{mutableStateOf(prefs.getString("ollama_model","qwen2.5-coder:7b").orEmpty())}
  var tab by remember{mutableIntStateOf(0)}
  var input by remember{mutableStateOf("")}
  var busy by remember{mutableStateOf(false)}
@@ -82,20 +101,32 @@ class MainActivity:ComponentActivity(){
       }
       if(error.isNotBlank()) Text(error,color=MaterialTheme.colorScheme.error)
       OutlinedTextField(value=input,onValueChange={input=it},modifier=Modifier.fillMaxWidth(),label={Text("اكتب رسالتك")})
-      Button(enabled=!busy&&input.isNotBlank()&&apiKey.isNotBlank(),modifier=Modifier.fillMaxWidth(),onClick={
+      Button(enabled=!busy&&input.isNotBlank()&&(provider=="Ollama"||apiKey.isNotBlank()),modifier=Modifier.fillMaxWidth(),onClick={
        val message=input.trim();input="";error=""
        val userLine=ChatLine("user",message);lines.add(userLine);db.add(sessionId,userLine);busy=true
        val snapshot=lines.toList()
        scope.launch{
-        try{val answer=withContext(Dispatchers.IO){ask(apiKey,model,snapshot)};val line=ChatLine("model",answer);lines.add(line);db.add(sessionId,line)}
+        try{val answer=withContext(Dispatchers.IO){if(provider=="Ollama") askOllama(ollamaUrl,ollamaModel,snapshot) else ask(apiKey,model,snapshot)};val line=ChatLine("model",answer);lines.add(line);db.add(sessionId,line)}
         catch(e:Exception){error=e.message?:"تعذر الاتصال"}
         finally{busy=false}
        }
       }){Text(if(busy) "جارٍ الإرسال..." else "إرسال")}
-      if(apiKey.isBlank()) Text("أضف مفتاح Gemini API من الإعدادات")
+      if(provider=="Gemini"&&apiKey.isBlank()) Text("أضف مفتاح Gemini API من الإعدادات")
      }
      4->{
       Spacer(Modifier.height(16.dp))
+      Text("مزود الذكاء الاصطناعي")
+      Row { listOf("Ollama","Gemini").forEach { p ->
+       Row(verticalAlignment=Alignment.CenterVertically) {
+        RadioButton(selected=provider==p,onClick={provider=p;prefs.edit().putString("provider",p).apply()})
+        Text(p)
+       }
+      } }
+      if(provider=="Ollama") {
+       OutlinedTextField(value=ollamaUrl,onValueChange={ollamaUrl=it;prefs.edit().putString("ollama_url",it).apply()},modifier=Modifier.fillMaxWidth(),label={Text("عنوان خادم Ollama (IP الشبكة أو HTTPS)")})
+       OutlinedTextField(value=ollamaModel,onValueChange={ollamaModel=it;prefs.edit().putString("ollama_model",it).apply()},modifier=Modifier.fillMaxWidth(),label={Text("اسم النموذج المثبت في Ollama")})
+       Text("localhost على الهاتف لا يشير إلى الكمبيوتر. استخدم عنوان الكمبيوتر على الشبكة المحلية، أو 10.0.2.2 للمحاكي. لا تعرض Ollama مباشرة للإنترنت.")
+      }
       OutlinedTextField(value=apiKey,onValueChange={apiKey=it;prefs.edit().putString("gemini_key",it).apply()},modifier=Modifier.fillMaxWidth(),label={Text("Gemini API Key")},visualTransformation=PasswordVisualTransformation())
       listOf("gemini-2.5-flash","gemini-2.5-pro").forEach{candidate->
        Row(verticalAlignment=Alignment.CenterVertically){RadioButton(selected=model==candidate,onClick={model=candidate;prefs.edit().putString("model",candidate).apply()});Text(candidate)}
