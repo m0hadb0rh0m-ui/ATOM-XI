@@ -1,28 +1,31 @@
-# ATOM AI X V2 — Implementation report (2026-11-12)
+# ATOM AI X V2 — Verified implementation report (2026-11-12)
 
-## Implemented (source commits, not runtime verification)
-- Responsive dark/light web design tokens and Arabic RTL layout: [style.css](web/style.css)
-- Eleven navigable sections: [app.js](web/app.js). Several are intentionally labeled 'coming soon' rather than misrepresented as functional.
-- Local chat history/drafts, multiple saved conversations (create/open/rename/pin/delete), local project create/delete, streaming UI with stop, copy response, and Markdown Canvas editing/export: [app.js](web/app.js)
-- Gemini FastAPI SSE backend and Dockerfile: [main.py](backend/main.py)
-- Backend unit test source and GitHub Actions workflow: [test_main.py](backend/test_main.py), [workflow](../.github/workflows/v2-backend-tests.yml)
+## Android code implemented
+- Eleven native Compose navigation destinations, RTL Arabic and LTR English layout direction, bilingual tab labels, dark Royal Night + Warm Gold and light theme.
+- Local SQLite chat sessions: create, open, search text, rename, pin, delete; saved message history.
+- Canvas: offline editable text document with autosave and Android sharing.
+- Projects: create/delete local projects.
+- Local opt-in memory: add, edit, delete, clear; local-only data.
+- Knowledge: import TXT/CSV; advanced document reader imports PDF, DOCX, XLSX and images with on-device Latin OCR. Local source/line search. Extraction is bounded by file size and may omit complex formatting.
+- Local evidence research: deterministic passage retrieval with actual source line references; external browser search link. **Not autonomous multi-source web research**.
+- Local agent workflows: evidence lookup, related passages and calculator; pause/resume display. **Not an LLM agent**.
+- Local automation: schedule/cancel one-off Android WorkManager notifications. **Not cloud automation**.
+- Voice: Android speech recognition intent, editable transcript, text-to-speech, speech rate and stop. **Not continuous duplex voice chat**.
+- Local usage counts and onboarding/privacy notice.
+- Android JVM unit tests for calculator and evidence retrieval, configured as a gate before APK build.
 
-## Tested
-- GitHub file creation/update returned successful commit SHAs.
-- GitHub Actions V2 Web Checks and V2 Backend Tests have completed successfully on the branch (2026-11-12). These are syntax/basic backend tests, not end-to-end tests.\n- The initial Android workflow failed on a Kotlin unresolved input reference; a correction was committed and a new build triggered. New APK result pending.\n- **No executed browser UI, device installation, or network-to-Gemini verification has been confirmed.**
-- CI is configured to run backend tests on branch push; result not verified.
-- Performance metrics, screenshots, WCAG axe audit: not measured.
+## Verified checks
+- **Android APK workflow completed successfully for commit `866646d85c9f963332778fba27322f43a30b7515`**, run https://github.com/m0hadb0rh0m-ui/ATOM-XI/actions/runs/43179388803 ; artifact `ATOM-AI-X-debug-apk`.
+- Later commits improve local metrics, onboarding, API 26 compatibility, and tests. **Their latest Android CI result must be checked separately**; do not treat the earlier success as validation of newer commits.
+- Backend and web CI have passed on the branch. Web checks are basic checks, not browser E2E.
+- No device installation, UI screenshot audit, accessibility audit, performance benchmarks, full user-journey E2E, live Gemini integration, or real cloud deployment has been verified.
 
-## Missing / failing acceptance criteria
-- Full eleven screens on Android, OAuth, complete bilingual translations, voice, agent execution, automations, document ingestion, RAG, deep research, memory synchronization, 200 golden questions, E2E/visual testing and Cloud Run deployment.
-- Backend is NOT ready for public deployment: no authentication, user isolation, rate limiting or billing controls. Do not expose it publicly.
-- Browser-to-backend integration requires configured HTTPS URL and allowed origin; no live end-to-end test has been run.
-- Previously exposed Gemini key should be revoked and replaced in Google AI Studio. Do not commit keys.
+## Important gaps
+- Native app currently exposes an optional direct Gemini key field from its legacy chat; do **not** embed a temporary API key in an APK. Secure cloud proxy, authentication, rate limiting and user isolation are required for deployment.
+- Cloud LLM agents, actual autonomous deep web research, server RAG/embeddings, real-time duplex voice, recurring AI automations, account login/sync and complete English translations are **not implemented**. Offline local equivalents do not satisfy cloud-specific acceptance criteria.
+- OCR is configured for Latin text, not guaranteed for Arabic images; scanned PDFs without a text layer may not extract correctly.
+- Android debug APK is for testing, not a signed production Play Store release.
+- Original `main` branch remains unchanged; V2 lives on `feature/atom-ai-x-v2`.
 
-## Metrics
-TTFT / LCP / INP / compressed JS / FPS: **not measured**.
-
-## Next 3 priorities
-1. Implement secure authenticated backend, rate limiting, secrets and real browser E2E test.
-2. Finish mobile UX, complete Arabic/English translations and automated visual/accessibility tests.
-3. Integrate native Android client and verify debug/release APK builds, then implement RAG and deep research.
+## Last phase
+Cloud integration is intentionally postponed per user instruction. Before public release: replace leaked keys, configure server-side secrets, authenticated HTTPS proxy, permissions and abuse controls, then verify end-to-end AI flows.
