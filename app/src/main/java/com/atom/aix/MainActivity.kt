@@ -235,6 +235,7 @@ class MainActivity:ComponentActivity(){
        HorizontalDivider()
        Spacer(Modifier.height(12.dp))
        Text(if(ar) "الخصوصية والذاكرة" else "Privacy and memory",fontWeight=FontWeight.Bold)
+       OutlinedButton(onClick={tab=11}){Text("إدارة الذاكرة المحلية") }
        Row(verticalAlignment=Alignment.CenterVertically,modifier=Modifier.fillMaxWidth()){
         Text(if(ar) "حفظ سجل المحادثات محليًا" else "Save local chat history",modifier=Modifier.weight(1f))
         Switch(checked=keepHistory,onCheckedChange={keepHistory=it;prefs.edit().putBoolean("keep_history",it).apply()})
@@ -252,12 +253,13 @@ class MainActivity:ComponentActivity(){
      1->{WorkspaceHome(onNavigate={tab=it})}
      2->{LocalDocumentWorkspace()}
      3->{UnavailableSection("الوكلاء","تنفيذ الوكلاء المتخصصين يحتاج إلى خدمة آمنة، وسيُفعّل لاحقًا.")}
-     4->{UnavailableSection("المعرفة","رفع الملفات وفهرستها غير متاحين قبل ربط خدمة معالجة الملفات.")}
+     4->{LocalKnowledgeWorkspace()}
      5->{UnavailableSection("الأتمتة","الجدولة والتنفيذ الخلفي غير متاحين حاليًا.")}
      6->{Column(Modifier.fillMaxSize().verticalScroll(androidx.compose.foundation.rememberScrollState())){LocalProjectsWorkspace();HorizontalDivider();ChatHistoryManager(db,onOpen={sessionId=it;tab=0},onChanged={version++;if(db.sessions().none{it.first==sessionId})sessionId=db.latestSessionId()?:db.createSession()})}}
      7->{UnavailableSection("الصوت المباشر","يمكنك استخدام الميكروفون وقراءة الرد داخل المحادثة. وضع الصوت المباشر غير متاح.")}
      8->{UnavailableSection("الاستخدام","قياس الاستهلاك الفعلي يحتاج إلى خدمة مستخدمين ومراقبة على الخادم.")}
      9->{WorkspaceHome(onNavigate={tab=it})}
+     11->{LocalMemoryWorkspace()}
      else->{UnavailableSection("غير متاح","هذا القسم غير متاح حاليًا.")}
     }
    }
