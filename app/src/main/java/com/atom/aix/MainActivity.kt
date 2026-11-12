@@ -21,6 +21,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -107,6 +110,7 @@ class MainActivity:ComponentActivity(){
  val listState=rememberLazyListState()
  LaunchedEffect(lines.size){if(lines.isNotEmpty()) listState.animateScrollToItem(lines.lastIndex)}
  MaterialTheme(colorScheme=if(darkMode) darkColorScheme(primary=Color(0xFFD4AF6A),onPrimary=Color(0xFF0B0D12),background=Color(0xFF0B0D12),surface=Color(0xFF12151C),onSurface=Color(0xFFEEF0F6),surfaceVariant=Color(0xFF1A1E28)) else lightColorScheme(primary=Color(0xFFA9812F),background=Color(0xFFF7F5F0),surface=Color.White,onSurface=Color(0xFF14161C))){
+  CompositionLocalProvider(LocalLayoutDirection provides if(uiLanguage=="ar") LayoutDirection.Rtl else LayoutDirection.Ltr){
   Scaffold(topBar={TopAppBar(title={Text("ATOM AI X",fontWeight=FontWeight.SemiBold)},navigationIcon={TextButton(onClick={tab=if(tab==0) 10 else 0}){Text("☰",style=MaterialTheme.typography.headlineSmall)}},actions={TextButton(onClick={sessionId=db.createSession();version++;tab=0}){Text("✎",style=MaterialTheme.typography.headlineSmall)}})}){padding->
    Column(Modifier.fillMaxSize().padding(padding).padding(horizontal=12.dp)){
     ScrollableTabRow(selectedTabIndex=tab){tabs.forEachIndexed{i,title->Tab(selected=tab==i,onClick={tab=i},text={Text(title)})}}
@@ -263,6 +267,7 @@ class MainActivity:ComponentActivity(){
      else->{UnavailableSection("غير متاح","هذا القسم غير متاح حاليًا.")}
     }
    }
+  }
   }
  }
 }
