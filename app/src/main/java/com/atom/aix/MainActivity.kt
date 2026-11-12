@@ -82,7 +82,7 @@ class MainActivity:ComponentActivity(){
  var ollamaModel by remember{mutableStateOf(prefs.getString("ollama_model","atom").orEmpty())}
  var temperature by remember{mutableFloatStateOf(prefs.getFloat("temperature",0.2f))}
  var uiLanguage by remember{mutableStateOf(prefs.getString("ui_language","ar").orEmpty())}
- var darkMode by remember{mutableStateOf(prefs.getBoolean("dark_mode",false))}
+ var darkMode by remember{mutableStateOf(prefs.getBoolean("dark_mode",true))}
  var speechEnabled by remember{mutableStateOf(prefs.getBoolean("speech_enabled",true))}
  var speechRate by remember{mutableFloatStateOf(prefs.getFloat("speech_rate",1f))}
  var voiceLanguage by remember{mutableStateOf(prefs.getString("voice_language","ar").orEmpty())}
@@ -106,7 +106,7 @@ class MainActivity:ComponentActivity(){
  val tabs=listOf("محادثة","الرئيسية","لوحة العمل","الوكلاء","المعرفة","الأتمتة","المشاريع","الصوت","الاستخدام","الترحيب","الإعدادات")
  val listState=rememberLazyListState()
  LaunchedEffect(lines.size){if(lines.isNotEmpty()) listState.animateScrollToItem(lines.lastIndex)}
- MaterialTheme(colorScheme=if(darkMode) darkColorScheme() else lightColorScheme(primary=Color(0xFF151515),background=Color.White,surface=Color.White)){
+ MaterialTheme(colorScheme=if(darkMode) darkColorScheme(primary=Color(0xFFD4AF6A),onPrimary=Color(0xFF0B0D12),background=Color(0xFF0B0D12),surface=Color(0xFF12151C),onSurface=Color(0xFFEEF0F6),surfaceVariant=Color(0xFF1A1E28)) else lightColorScheme(primary=Color(0xFFA9812F),background=Color(0xFFF7F5F0),surface=Color.White,onSurface=Color(0xFF14161C))){
   Scaffold(topBar={TopAppBar(title={Text("ATOM AI X",fontWeight=FontWeight.SemiBold)},navigationIcon={TextButton(onClick={tab=if(tab==0) 10 else 0}){Text("☰",style=MaterialTheme.typography.headlineSmall)}},actions={TextButton(onClick={sessionId=db.createSession();version++;tab=0}){Text("✎",style=MaterialTheme.typography.headlineSmall)}})}){padding->
    Column(Modifier.fillMaxSize().padding(padding).padding(horizontal=12.dp)){
     ScrollableTabRow(selectedTabIndex=tab){tabs.forEachIndexed{i,title->Tab(selected=tab==i,onClick={tab=i},text={Text(title)})}}
@@ -115,7 +115,7 @@ class MainActivity:ComponentActivity(){
       var expanded by remember { mutableStateOf(false) }
       Row(verticalAlignment=Alignment.CenterVertically,modifier=Modifier.fillMaxWidth()){
        Box {
-        TextButton(onClick={expanded=true}){Text("☰  المحادثات",color=Color.DarkGray)}
+        TextButton(onClick={expanded=true}){Text("☰  المحادثات",color=MaterialTheme.colorScheme.onSurface)}
         DropdownMenu(expanded=expanded,onDismissRequest={expanded=false}){
          val history=remember(version){db.sessions()}
          history.forEach{(id,title)->DropdownMenuItem(text={Text(title+" #"+id)},onClick={sessionId=id;expanded=false})}
@@ -124,7 +124,7 @@ class MainActivity:ComponentActivity(){
         }
        }
        Spacer(Modifier.weight(1f))
-       Text(engine+" ▾",color=Color.Gray,modifier=Modifier.padding(end=12.dp))
+       Text(engine+" ▾",color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.padding(end=12.dp))
       }
       if(lines.isEmpty()) Box(Modifier.weight(1f).fillMaxWidth(),contentAlignment=Alignment.Center){
        Column(horizontalAlignment=Alignment.CenterHorizontally){
@@ -136,13 +136,13 @@ class MainActivity:ComponentActivity(){
        items(lines){line->
         if(line.role=="user"){
          Row(Modifier.fillMaxWidth().padding(vertical=8.dp),horizontalArrangement=Arrangement.End){
-          Text(line.text,modifier=Modifier.widthIn(max=310.dp).background(Color(0xFFF1F1F1),RoundedCornerShape(22.dp)).padding(14.dp),color=Color(0xFF202020))
+          Text(line.text,modifier=Modifier.widthIn(max=310.dp).background(MaterialTheme.colorScheme.surfaceVariant,RoundedCornerShape(22.dp)).padding(14.dp),color=MaterialTheme.colorScheme.onSurface)
          }
         } else {
          Column(Modifier.fillMaxWidth().padding(vertical=12.dp)){
-          Text("⚛ ATOM",fontWeight=FontWeight.Bold,color=Color(0xFF202020))
+          Text("⚛ ATOM",fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.primary)
           Spacer(Modifier.height(8.dp))
-          Text(line.text,color=Color(0xFF202020))
+          Text(line.text,color=MaterialTheme.colorScheme.onSurface)
           if(speechEnabled) TextButton(onClick={tts.language=Locale.forLanguageTag(voiceLanguage);tts.setSpeechRate(speechRate);tts.speak(line.text,TextToSpeech.QUEUE_FLUSH,null,"atom_reply")}){Text(if(uiLanguage=="ar") "🔊 استمع للرد" else "🔊 Listen")}
          }
         }
