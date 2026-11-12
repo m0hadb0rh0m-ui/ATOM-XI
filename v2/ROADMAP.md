@@ -1,0 +1,16 @@
+# V2 acceptance roadmap
+- [x] Isolated branch and original version preserved
+- [x] Design tokens and responsive web UI foundation
+- [x] Navigation shells for eleven screens
+- [x] Local draft, chat, Markdown Canvas editing/export
+- [x] SSE Gemini backend source and basic tests
+- [ ] Verified live Gemini response and authenticated API
+- [ ] Complete bilingual translations and WCAG 2.2 AA audit
+- [ ] Fully working eleven screens on web and Android
+- [ ] OAuth and secure account/project memory
+- [ ] Deep research with citations and document RAG
+- [ ] Agent with checkpoint, pause and resume
+- [ ] Automated Playwright E2E, screenshots, Lighthouse, axe
+- [ ] 200-question golden test set
+- [ ] Verified Android APK build and installation
+- [ ] Cloud Run deployment with safe secret, auth and quotas
