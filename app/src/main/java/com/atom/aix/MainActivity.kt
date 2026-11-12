@@ -256,7 +256,7 @@ class MainActivity:ComponentActivity(){
      }
      1->{WorkspaceHome(onNavigate={tab=it})}
      2->{LocalDocumentWorkspace()}
-     3->{UnavailableSection("الوكلاء","تنفيذ الوكلاء المتخصصين يحتاج إلى خدمة آمنة، وسيُفعّل لاحقًا.")}
+     3->{LocalToolsWorkspace()}
      4->{LocalKnowledgeWorkspace()}
      5->{UnavailableSection("الأتمتة","الجدولة والتنفيذ الخلفي غير متاحين حاليًا.")}
      6->{Column(Modifier.fillMaxSize().verticalScroll(androidx.compose.foundation.rememberScrollState())){LocalProjectsWorkspace();HorizontalDivider();ChatHistoryManager(db,onOpen={sessionId=it;tab=0},onChanged={version++;if(db.sessions().none{it.first==sessionId})sessionId=db.latestSessionId()?:db.createSession()})}}
