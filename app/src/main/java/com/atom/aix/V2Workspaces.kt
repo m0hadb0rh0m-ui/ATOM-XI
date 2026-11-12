@@ -70,7 +70,7 @@ fun LocalProjectsWorkspace(){
  var deleteName by remember{mutableStateOf<String?>(null)}
  val items=remember(projects){runCatching{val arr=JSONArray(projects);(0 until arr.length()).map{arr.getString(it)}}.getOrDefault(emptyList())}
  fun store(newItems:List<String>){val arr=JSONArray();newItems.forEach{arr.put(it)};projects=arr.toString();prefs.edit().putString("projects",projects).apply()}
- Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
+ Column(Modifier.fillMaxWidth().padding(16.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
   Text("المشاريع والمكتبة",style=MaterialTheme.typography.headlineMedium,fontWeight=FontWeight.Bold)
   Text("مشاريع محلية على الجهاز. المزامنة والمرفقات ستضاف لاحقًا.",style=MaterialTheme.typography.bodySmall)
   OutlinedTextField(value=name,onValueChange={name=it},modifier=Modifier.fillMaxWidth(),label={Text("اسم مشروع جديد")})
