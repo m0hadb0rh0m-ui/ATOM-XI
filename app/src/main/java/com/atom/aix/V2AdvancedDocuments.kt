@@ -21,16 +21,29 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.io.InputStream
 import java.util.zip.ZipInputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+internal fun readLimited(stream:InputStream,max:Int):ByteArray{
+ val buffer=ByteArray(8192)
+ val output=ByteArrayOutputStream()
+ while(true){
+  val read=stream.read(buffer)
+  if(read<0)break
+  require(output.size()+read<=max){"الملف يتجاوز الحد المسموح"}
+  output.write(buffer,0,read)
+ }
+ return output.toByteArray()
+}
 internal object DocumentReader {
  fun extract(context:Context,uri:Uri):String{
   val name=uri.lastPathSegment.orEmpty().lowercase()
   val type=context.contentResolver.getType(uri).orEmpty()
-  val bytes=context.contentResolver.openInputStream(uri)?.use{it.readNBytes(8*1024*1024+1)}
+  val bytes=context.contentResolver.openInputStream(uri)?.use{readLimited(it,8*1024*1024)}
    ?:error("تعذر قراءة الملف")
   require(bytes.size<=8*1024*1024){"حجم الملف أكبر من 8 ميغابايت"}
   val isPdf=type=="application/pdf"||name.endsWith(".pdf")
@@ -59,7 +72,7 @@ internal object DocumentReader {
     val path=entry.name
     val needed=if(xlsx)path=="xl/sharedStrings.xml"||path.matches(Regex("xl/worksheets/sheet[0-9]+.xml")) else path=="word/document.xml"
     if(needed){
-     val data=zip.readNBytes(3*1024*1024+1)
+     val data=readLimited(zip,3*1024*1024)
      require(data.size<=3*1024*1024){"محتوى مضغوط كبير"}
      files[path]=data.toString(Charsets.UTF_8)
     }
@@ -104,7 +117,7 @@ fun AdvancedDocumentWorkspace(){
    val mime=context.contentResolver.getType(uri).orEmpty()
    if(mime.startsWith("image/")){
     try{
-     val bytes=context.contentResolver.openInputStream(uri)?.use{it.readNBytes(8*1024*1024+1)}?:error("تعذر فتح الصورة")
+     val bytes=context.contentResolver.openInputStream(uri)?.use{readLimited(it,8*1024*1024)}?:error("تعذر فتح الصورة")
      require(bytes.size<=8*1024*1024){"الصورة كبيرة جدًا"}
      val bitmap=BitmapFactory.decodeByteArray(bytes,0,bytes.size)?:error("صيغة صورة غير مدعومة")
      recognizer.process(InputImage.fromBitmap(bitmap,0)).addOnSuccessListener{
