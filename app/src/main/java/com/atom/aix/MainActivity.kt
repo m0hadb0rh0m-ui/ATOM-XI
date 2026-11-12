@@ -103,13 +103,13 @@ class MainActivity:ComponentActivity(){
  var sessionId by remember{mutableLongStateOf(db.latestSessionId()?:db.createSession())}
  var version by remember{mutableIntStateOf(0)}
  LaunchedEffect(sessionId){lines.clear();lines.addAll(db.load(sessionId))}
- val tabs=listOf("محادثة","3D","صور","فيديو","إعدادات")
+ val tabs=listOf("محادثة","الرئيسية","لوحة العمل","الوكلاء","المعرفة","الأتمتة","المشاريع","الصوت","الاستخدام","الترحيب","الإعدادات")
  val listState=rememberLazyListState()
  LaunchedEffect(lines.size){if(lines.isNotEmpty()) listState.animateScrollToItem(lines.lastIndex)}
  MaterialTheme(colorScheme=if(darkMode) darkColorScheme() else lightColorScheme(primary=Color(0xFF151515),background=Color.White,surface=Color.White)){
-  Scaffold(topBar={TopAppBar(title={Text("ATOM AI X",fontWeight=FontWeight.SemiBold)},navigationIcon={TextButton(onClick={tab=if(tab==0) 4 else 0}){Text("☰",style=MaterialTheme.typography.headlineSmall)}},actions={TextButton(onClick={sessionId=db.createSession();version++;tab=0}){Text("✎",style=MaterialTheme.typography.headlineSmall)}})}){padding->
+  Scaffold(topBar={TopAppBar(title={Text("ATOM AI X",fontWeight=FontWeight.SemiBold)},navigationIcon={TextButton(onClick={tab=if(tab==0) 10 else 0}){Text("☰",style=MaterialTheme.typography.headlineSmall)}},actions={TextButton(onClick={sessionId=db.createSession();version++;tab=0}){Text("✎",style=MaterialTheme.typography.headlineSmall)}})}){padding->
    Column(Modifier.fillMaxSize().padding(padding).padding(horizontal=12.dp)){
-    if(tab!=0) ScrollableTabRow(selectedTabIndex=tab){tabs.forEachIndexed{i,title->Tab(selected=tab==i,onClick={tab=i},text={Text(title)})}}
+    ScrollableTabRow(selectedTabIndex=tab){tabs.forEachIndexed{i,title->Tab(selected=tab==i,onClick={tab=i},text={Text(title)})}}
     when(tab){
      0->{
       var expanded by remember { mutableStateOf(false) }
@@ -119,8 +119,8 @@ class MainActivity:ComponentActivity(){
         DropdownMenu(expanded=expanded,onDismissRequest={expanded=false}){
          val history=remember(version){db.sessions()}
          history.forEach{(id,title)->DropdownMenuItem(text={Text(title+" #"+id)},onClick={sessionId=id;expanded=false})}
-         DropdownMenuItem(text={Text("⚙️ الإعدادات")},onClick={tab=4;expanded=false})
-         DropdownMenuItem(text={Text("🎨 الصور والفيديو و3D")},onClick={tab=2;expanded=false})
+         DropdownMenuItem(text={Text("⚙️ الإعدادات")},onClick={tab=10;expanded=false})
+         DropdownMenuItem(text={Text("📄 لوحة العمل")},onClick={tab=2;expanded=false})
         }
        }
        Spacer(Modifier.weight(1f))
@@ -150,7 +150,7 @@ class MainActivity:ComponentActivity(){
       }
       if(busy) LinearProgressIndicator(modifier=Modifier.fillMaxWidth())
       if(error.isNotBlank()) Text(error,color=MaterialTheme.colorScheme.error)
-      if(engine=="Gemini"&&apiKey.isBlank()) TextButton(onClick={tab=4}){Text("أضف مفتاح Gemini API من الإعدادات")}
+      if(engine=="Gemini"&&apiKey.isBlank()) TextButton(onClick={tab=10}){Text("أضف مفتاح Gemini API من الإعدادات")}
       Row(Modifier.fillMaxWidth().padding(bottom=8.dp,top=6.dp),verticalAlignment=Alignment.Bottom){
        TextButton(onClick={tab=2},modifier=Modifier.padding(end=2.dp)){Text("+",style=MaterialTheme.typography.headlineMedium)}
        OutlinedTextField(value=input,onValueChange={input=it},modifier=Modifier.weight(1f),placeholder={Text(if(uiLanguage=="ar") "اسأل ATOM AI X" else "Ask ATOM AI X")},shape=RoundedCornerShape(28.dp),maxLines=5)
@@ -177,7 +177,7 @@ class MainActivity:ComponentActivity(){
        }){Text("↑",style=MaterialTheme.typography.titleLarge)}
       }
      }
-     4->{
+     10->{
       val ar=uiLanguage=="ar"
       Column(Modifier.fillMaxSize().verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(vertical=12.dp)){
        Text(if(ar) "الإعدادات العامة" else "General settings",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)
@@ -249,7 +249,16 @@ class MainActivity:ComponentActivity(){
        Spacer(Modifier.height(24.dp))
       }
      }
-     else->{Spacer(Modifier.height(24.dp));Text("هذا القسم قيد التطوير، ولا يدعم التوليد حاليًا.")}
+     1->{WorkspaceHome(onNavigate={tab=it})}
+     2->{LocalDocumentWorkspace()}
+     3->{UnavailableSection("الوكلاء","تنفيذ الوكلاء المتخصصين يحتاج إلى خدمة آمنة، وسيُفعّل لاحقًا.")}
+     4->{UnavailableSection("المعرفة","رفع الملفات وفهرستها غير متاحين قبل ربط خدمة معالجة الملفات.")}
+     5->{UnavailableSection("الأتمتة","الجدولة والتنفيذ الخلفي غير متاحين حاليًا.")}
+     6->{LocalProjectsWorkspace()}
+     7->{UnavailableSection("الصوت المباشر","يمكنك استخدام الميكروفون وقراءة الرد داخل المحادثة. وضع الصوت المباشر غير متاح.")}
+     8->{UnavailableSection("الاستخدام","قياس الاستهلاك الفعلي يحتاج إلى خدمة مستخدمين ومراقبة على الخادم.")}
+     9->{WorkspaceHome(onNavigate={tab=it})}
+     else->{UnavailableSection("غير متاح","هذا القسم غير متاح حاليًا.")}
     }
    }
   }
