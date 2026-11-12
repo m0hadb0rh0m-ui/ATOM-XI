@@ -6,6 +6,7 @@ on:
       - feature/atom-ai-x-v2
     paths:
       - 'app/src/androidTest/**'
+      - 'app/build.gradle.kts'
       - '.github/workflows/v2-android-ui.yml'
 concurrency:
   group: v2-android-ui-${{ github.ref }}
