@@ -3,13 +3,13 @@
 ## Implemented (source commits, not runtime verification)
 - Responsive dark/light web design tokens and Arabic RTL layout: [style.css](web/style.css)
 - Eleven navigable sections: [app.js](web/app.js). Several are intentionally labeled 'coming soon' rather than misrepresented as functional.
-- Local chat history/drafts, streaming UI with stop, copy response, and Markdown Canvas editing/export: [app.js](web/app.js)
+- Local chat history/drafts, multiple saved conversations (create/open/rename/pin/delete), local project create/delete, streaming UI with stop, copy response, and Markdown Canvas editing/export: [app.js](web/app.js)
 - Gemini FastAPI SSE backend and Dockerfile: [main.py](backend/main.py)
 - Backend unit test source and GitHub Actions workflow: [test_main.py](backend/test_main.py), [workflow](../.github/workflows/v2-backend-tests.yml)
 
 ## Tested
 - GitHub file creation/update returned successful commit SHAs.
-- **No executed browser, Android, network-to-Gemini, pytest, or APK build verification has been confirmed in this session.**
+- GitHub Actions V2 Web Checks and V2 Backend Tests have completed successfully on the branch (2026-11-12). These are syntax/basic backend tests, not end-to-end tests.\n- The initial Android workflow failed on a Kotlin unresolved input reference; a correction was committed and a new build triggered. New APK result pending.\n- **No executed browser UI, device installation, or network-to-Gemini verification has been confirmed.**
 - CI is configured to run backend tests on branch push; result not verified.
 - Performance metrics, screenshots, WCAG axe audit: not measured.
 
