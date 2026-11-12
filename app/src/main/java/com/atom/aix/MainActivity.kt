@@ -91,7 +91,7 @@ class MainActivity:ComponentActivity(){
  var voiceLanguage by remember{mutableStateOf(prefs.getString("voice_language","ar").orEmpty())}
  var keepHistory by remember{mutableStateOf(prefs.getBoolean("keep_history",true))}
  var confirmClear by remember{mutableStateOf(false)}
- var tab by remember{mutableIntStateOf(0)}
+ var tab by remember{mutableIntStateOf(if(context.getSharedPreferences("atom_v2_local",Activity.MODE_PRIVATE).getBoolean("onboarding_accepted",false))0 else 9)}
  var input by remember{mutableStateOf("")}
  val voiceLauncher=rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()){result->
   val recognized=result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
@@ -262,7 +262,7 @@ class MainActivity:ComponentActivity(){
      6->{Column(Modifier.fillMaxSize().verticalScroll(androidx.compose.foundation.rememberScrollState())){LocalProjectsWorkspace();HorizontalDivider();ChatHistoryManager(db,onOpen={sessionId=it;tab=0},onChanged={version++;if(db.sessions().none{it.first==sessionId})sessionId=db.latestSessionId()?:db.createSession()})}}
      7->{VoiceConversationWorkspace()}
      8->{LocalUsageWorkspace()}
-     9->{WorkspaceHome(onNavigate={tab=it})}
+     9->{WelcomeWorkspace(onStart={tab=1})}
      11->{LocalMemoryWorkspace()}
      12->{LocalResearchWorkspace()}
      13->{LocalToolsWorkspace()}
