@@ -74,10 +74,6 @@ class MainActivity:ComponentActivity(){
  val context=LocalContext.current
  val tts=remember { TextToSpeech(context,null) }
  DisposableEffect(tts){onDispose{tts.stop();tts.shutdown()}}
- val voiceLauncher=rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()){result->
-  val recognized=result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
-  if(!recognized.isNullOrBlank()) input=recognized
- }
  val prefs=remember{context.getSharedPreferences("atom_settings",Activity.MODE_PRIVATE)}
  var apiKey by remember{mutableStateOf(prefs.getString("gemini_key","").orEmpty())}
  var model by remember{mutableStateOf(prefs.getString("model","gemini-2.5-flash").orEmpty())}
@@ -94,6 +90,11 @@ class MainActivity:ComponentActivity(){
  var confirmClear by remember{mutableStateOf(false)}
  var tab by remember{mutableIntStateOf(0)}
  var input by remember{mutableStateOf("")}
+ val voiceLauncher=rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()){result->
+  val recognized=result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
+  if(!recognized.isNullOrBlank()) input=recognized
+ }
+
  var busy by remember{mutableStateOf(false)}
  var error by remember{mutableStateOf("")}
  val lines=remember{mutableStateListOf<ChatLine>()}
