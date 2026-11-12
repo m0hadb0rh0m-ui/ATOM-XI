@@ -1,0 +1,17 @@
+name: V2 Web Checks
+on:
+  push:
+    branches: [feature/atom-ai-x-v2]
+  workflow_dispatch:
+jobs:
+  web-static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate JavaScript syntax
+        run: node --check v2/web/app.js
+      - name: Check required files
+        run: test -s v2/web/index.html && test -s v2/web/style.css && test -s v2/web/app.js && test -s v2/REPORT.md
