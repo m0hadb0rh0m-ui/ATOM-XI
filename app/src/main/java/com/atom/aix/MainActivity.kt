@@ -106,7 +106,7 @@ class MainActivity:ComponentActivity(){
  var sessionId by remember{mutableLongStateOf(db.latestSessionId()?:db.createSession())}
  var version by remember{mutableIntStateOf(0)}
  LaunchedEffect(sessionId){lines.clear();lines.addAll(db.load(sessionId))}
- val tabs=listOf("محادثة","الرئيسية","لوحة العمل","الوكلاء","المعرفة","الأتمتة","المشاريع","الصوت","الاستخدام","الترحيب","الإعدادات")
+ val tabs=if(uiLanguage=="en")listOf("Chat","Home","Canvas","Agents","Knowledge","Automations","Projects","Voice","Usage","Welcome","Settings") else listOf("محادثة","الرئيسية","لوحة العمل","الوكلاء","المعرفة","الأتمتة","المشاريع","الصوت","الاستخدام","الترحيب","الإعدادات")
  val listState=rememberLazyListState()
  LaunchedEffect(lines.size){if(lines.isNotEmpty()) listState.animateScrollToItem(lines.lastIndex)}
  MaterialTheme(colorScheme=if(darkMode) darkColorScheme(primary=Color(0xFFD4AF6A),onPrimary=Color(0xFF0B0D12),background=Color(0xFF0B0D12),surface=Color(0xFF12151C),onSurface=Color(0xFFEEF0F6),surfaceVariant=Color(0xFF1A1E28)) else lightColorScheme(primary=Color(0xFFA9812F),background=Color(0xFFF7F5F0),surface=Color.White,onSurface=Color(0xFF14161C))){
