@@ -256,14 +256,16 @@ class MainActivity:ComponentActivity(){
      }
      1->{WorkspaceHome(onNavigate={tab=it})}
      2->{LocalDocumentWorkspace()}
-     3->{LocalToolsWorkspace()}
-     4->{LocalKnowledgeWorkspace()}
-     5->{UnavailableSection("الأتمتة","الجدولة والتنفيذ الخلفي غير متاحين حاليًا.")}
+     3->{LocalAgentWorkspace()}
+     4->{Column(Modifier.fillMaxSize()){Row{TextButton(onClick={tab=12}){Text("بحث بالمصادر")};TextButton(onClick={tab=13}){Text("أدوات الحساب")}};AdvancedDocumentWorkspace()}}
+     5->{LocalAutomationWorkspace()}
      6->{Column(Modifier.fillMaxSize().verticalScroll(androidx.compose.foundation.rememberScrollState())){LocalProjectsWorkspace();HorizontalDivider();ChatHistoryManager(db,onOpen={sessionId=it;tab=0},onChanged={version++;if(db.sessions().none{it.first==sessionId})sessionId=db.latestSessionId()?:db.createSession()})}}
-     7->{UnavailableSection("الصوت المباشر","يمكنك استخدام الميكروفون وقراءة الرد داخل المحادثة. وضع الصوت المباشر غير متاح.")}
+     7->{VoiceConversationWorkspace()}
      8->{UnavailableSection("الاستخدام","قياس الاستهلاك الفعلي يحتاج إلى خدمة مستخدمين ومراقبة على الخادم.")}
      9->{WorkspaceHome(onNavigate={tab=it})}
      11->{LocalMemoryWorkspace()}
+     12->{LocalResearchWorkspace()}
+     13->{LocalToolsWorkspace()}
      else->{UnavailableSection("غير متاح","هذا القسم غير متاح حاليًا.")}
     }
    }
