@@ -3,9 +3,12 @@ import json
 import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 app = FastAPI(title="ATOM AI X v2 API", version="2.0.0")
+# Explicit allowlist only; never use wildcard origins for production.
+app.add_middleware(CORSMiddleware, allow_origins=[x.strip() for x in os.getenv("ALLOWED_ORIGINS", "http://localhost:8081,http://127.0.0.1:8081").split(",") if x.strip()], allow_methods=["GET", "POST"], allow_headers=["Content-Type"])
 MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 API_URL = "https://generativelanguage.googleapis.com/v1beta/models"
 
