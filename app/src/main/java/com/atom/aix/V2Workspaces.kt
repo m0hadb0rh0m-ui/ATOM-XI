@@ -84,3 +84,33 @@ fun LocalProjectsWorkspace(){
  }
  if(deleteName!=null)AlertDialog(onDismissRequest={deleteName=null},title={Text("حذف المشروع؟")},text={Text("سيُحذف اسم المشروع من القائمة المحلية.")},confirmButton={TextButton(onClick={store(items.filterNot{it==deleteName});deleteName=null}){Text("حذف")}},dismissButton={TextButton(onClick={deleteName=null}){Text("إلغاء")}})
 }
+
+@Composable
+internal fun ChatHistoryManager(db:AtomDatabase,onOpen:(Long)->Unit,onChanged:()->Unit){
+ var query by remember{mutableStateOf("")}
+ var version by remember{mutableIntStateOf(0)}
+ var renameId by remember{mutableStateOf<Long?>(null)}
+ var renameText by remember{mutableStateOf("")}
+ var deleteId by remember{mutableStateOf<Long?>(null)}
+ val sessions=remember(query,version){if(query.isBlank())db.sessions() else db.searchSessions(query)}
+ Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
+  Text("سجل المحادثات",style=MaterialTheme.typography.titleLarge)
+  OutlinedTextField(value=query,onValueChange={query=it},modifier=Modifier.fillMaxWidth(),label={Text("بحث في العناوين والرسائل")})
+  sessions.forEach{(id,title)->
+   ElevatedCard(Modifier.fillMaxWidth()){
+    Column(Modifier.padding(12.dp)){
+     Text((if(db.isPinned(id))"📌 " else "")+title)
+     Row(horizontalArrangement=Arrangement.spacedBy(4.dp)){
+      TextButton(onClick={onOpen(id)}){Text("فتح")}
+      TextButton(onClick={renameId=id;renameText=title}){Text("تسمية")}
+      TextButton(onClick={db.togglePin(id);version++;onChanged()}){Text(if(db.isPinned(id))"إلغاء التثبيت" else "تثبيت")}
+      TextButton(onClick={deleteId=id}){Text("حذف")}
+     }
+    }
+   }
+  }
+  if(sessions.isEmpty())Text("لا توجد نتائج.")
+ }
+ if(renameId!=null)AlertDialog(onDismissRequest={renameId=null},title={Text("إعادة تسمية المحادثة")},text={OutlinedTextField(value=renameText,onValueChange={renameText=it},singleLine=true)},confirmButton={TextButton(enabled=renameText.isNotBlank(),onClick={db.renameSession(renameId!!,renameText.trim());renameId=null;version++;onChanged()}){Text("حفظ")}},dismissButton={TextButton(onClick={renameId=null}){Text("إلغاء")}})
+ if(deleteId!=null)AlertDialog(onDismissRequest={deleteId=null},title={Text("حذف المحادثة؟")},text={Text("سيتم حذف الرسائل المحفوظة في هذه المحادثة من الجهاز.")},confirmButton={TextButton(onClick={db.deleteSession(deleteId!!);deleteId=null;version++;onChanged()}){Text("حذف")}},dismissButton={TextButton(onClick={deleteId=null}){Text("إلغاء")}})
+}
