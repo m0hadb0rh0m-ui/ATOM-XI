@@ -261,7 +261,7 @@ class MainActivity:ComponentActivity(){
      5->{LocalAutomationWorkspace()}
      6->{Column(Modifier.fillMaxSize().verticalScroll(androidx.compose.foundation.rememberScrollState())){LocalProjectsWorkspace();HorizontalDivider();ChatHistoryManager(db,onOpen={sessionId=it;tab=0},onChanged={version++;if(db.sessions().none{it.first==sessionId})sessionId=db.latestSessionId()?:db.createSession()})}}
      7->{VoiceConversationWorkspace()}
-     8->{UnavailableSection("الاستخدام","قياس الاستهلاك الفعلي يحتاج إلى خدمة مستخدمين ومراقبة على الخادم.")}
+     8->{LocalUsageWorkspace()}
      9->{WorkspaceHome(onNavigate={tab=it})}
      11->{LocalMemoryWorkspace()}
      12->{LocalResearchWorkspace()}
